@@ -1,6 +1,7 @@
 # telescope-hg.nvim
 
-This is an extension for [telescope.nvim][] provides some [mercurial] operation. Can't find one so this is a simple one that scratch my own itch.
+This is an extension for [telescope.nvim][] provides some [mercurial] operation. 
+Couldn't find one so I made this to scratch my own itch.
 
 [mercurial]: https://www.mercurial-scm.org/
 [telescope.nvim]: https://github.com/nvim-telescope/telescope.nvim
