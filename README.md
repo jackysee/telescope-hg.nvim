@@ -12,7 +12,7 @@ This is an extension for [telescope.nvim][] provides some [mercurial] operation.
 ```vim
 Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
-Plug 'jackysee/telescope-hg'
+Plug 'jackysee/telescope-hg.nvim'
 ```
 
 ```vim
