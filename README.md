@@ -5,7 +5,7 @@ This is an extension for [telescope.nvim][] provides some [mercurial] operation.
 [mercurial]: https://www.mercurial-scm.org/
 [telescope.nvim]: https://github.com/nvim-telescope/telescope.nvim
 
-![telescope-hg plugin](./telescope-hg.png)
+![telescope-hg plugin](./telescope-hg.png?raw=true)
 
 ## Installation
 
