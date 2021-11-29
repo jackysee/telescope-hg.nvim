@@ -10,13 +10,13 @@ Couldn't find one so I made this to scratch my own itch.
 
 ## Installation
 
-```vim
+```viml
 Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
 Plug 'jackysee/telescope-hg.nvim'
 ```
 
-```vim
+```viml
 lua require'telescope'.load_extension('hg')
 ```
 
