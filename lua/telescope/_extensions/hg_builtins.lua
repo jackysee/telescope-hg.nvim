@@ -1,53 +1,16 @@
 local pickers = require "telescope.pickers"
 local previewers = require "telescope.previewers"
 local finders = require "telescope.finders"
-local conf = require'telescope.config'.values
+local conf = require"telescope.config".values
 local putils = require "telescope.previewers.utils"
 local entry_display = require "telescope.pickers.entry_display"
 local action_state = require "telescope.actions.state"
 local actions = require "telescope.actions"
 local utils = require "telescope.utils"
 local strings = require "plenary.strings"
--- local log = require"luadev".print
---
 
 local function get_root(opts)
     return utils.get_os_command_output({'hg', 'root'}, opts.cwd)[1] .. '/'
-end
-
-local function make_entry(opts)
-    opts = opts or {}
-
-    local displayer = entry_display.create {
-        separator = " ",
-        items = {{width = 5}, {remaining = true}}
-    }
-
-    local make_display = function(entry)
-        return displayer {
-            {entry.value, "TelescopeResultsIdentifier"}, entry.msg
-        }
-    end
-
-    return function(entry)
-        if entry == "" then return nil end
-
-        entry = entry:gsub("^[^%d]+", "")
-        local sha, msg = string.match(entry, "(%d+) (.+)")
-
-        if not msg then
-            sha = entry
-            msg = "<empty commit message>"
-        end
-
-        return {
-            value = sha,
-            ordinal = sha .. " " .. msg,
-            msg = msg,
-            display = make_display,
-            current_file = opts.current_file
-        }
-    end
 end
 
 local M = {};
@@ -55,8 +18,37 @@ local M = {};
 M.logthis = function(opts)
     opts = opts or {}
     opts.current_file = vim.F.if_nil(opts.current_file, vim.fn.expand "%:p")
-    print(opts.current_file)
-    opts.entry_maker = vim.F.if_nil(opts.entry_maker, make_entry(opts))
+    opts.entry_maker = function(entry)
+        if entry == "" then return nil end
+
+        entry = entry:gsub("^[^%d]+", "")
+        local rev, msg, by = string.match(entry, "%s*(%d+)%s+(.+)(%([^%(]+%))$")
+
+        if not msg then
+            rev = entry
+            msg = "<empty commit message>"
+        end
+
+        local displayer = entry_display.create {
+            separator = " ",
+            items = {{width = 5}, {remaining = true}, {remaining = true}}
+        }
+
+        return {
+            value = rev,
+            ordinal = rev .. " " .. msg .. " " .. by,
+            msg = msg,
+            by = by,
+            display = function(_entry)
+                return displayer {
+                    {_entry.value, "TelescopeResultsIdentifier"}, _entry.msg,
+                    {_entry.by, "TelescopeResultsSpecialComment"}
+                }
+            end,
+            current_file = opts.current_file
+        }
+    end
+
     local command = {
         "hg", "log",
         '--template={rev} {if(tags,\'[{tags}] \')}{desc|strip|firstline} ({author|user} {date|age})\n',
@@ -140,7 +132,9 @@ M.logthis = function(opts)
 end
 
 local function entry_get_rev(entry)
+    if entry == nil then return nil end
     if entry.rev ~= nil then return entry.rev end
+    if entry[1] == nil then return nil end
     local line = entry[1]:gsub("^[^%d]+", "")
     if line == "" then return nil end
     local rev = string.match(line, "(%d+) (.+)")
@@ -174,12 +168,48 @@ local checkout = function(prompt_bufnr)
     end
 end
 
+local highlight_glog = function(line)
+    local highlights = {}
+    local hstart, hend = line:find "%d+"
+    if hstart then
+        if hend < #line then
+            table.insert(highlights,
+                         {{hstart - 1, hend}, "TelescopeResultsIdentifier"});
+        end
+    end
+    -- local _, cstart = line:find "%d+%s+"
+    -- if cstart then
+    --     local cend = line:find " %([^%)]+%)$"
+    --     if cend then
+    --         table.insert(highlights,
+    --                      {{cstart - 1, cend - 1}, "TelescopeResultsConstant"});
+    --     end
+    -- end
+    local dstart, _ = line:find " %([^%)]+%)$"
+    if dstart then
+        table.insert(highlights,
+                     {{dstart, #line}, "TelescopeResultsSpecialComment"});
+    end
+    return highlights
+end
+
 M.log = function(opts)
     opts = opts or {}
     local command = {
         "hg", "log", "-G",
         '--template={rev} {if(tags,\'[{tags}] \')}{desc|strip|firstline} ({author|user} {date|age})\n'
     }
+    opts.entry_maker = function(entry)
+        local rev = string.match(entry, "(%d+) (.+)")
+        return {
+            value = entry,
+            ordinal = entry,
+            rev = rev,
+            display = function(self)
+                return self.value, highlight_glog(self.value)
+            end
+        }
+    end
 
     pickers.new(opts, {
         prompt_title = "Commits",
@@ -331,12 +361,6 @@ M.status = function(opts)
         separator = " ",
         items = {{width = 3}, {remaining = true}}
     }
-    local make_display = function(entry)
-        local current = ""
-        return displayer {
-            {entry.status}, {entry.file, "TelescopeResultsIdentifier"}
-        }
-    end
     pickers.new(opts, {
         prompt_title = "status",
         finder = finders.new_table {
@@ -350,7 +374,12 @@ M.status = function(opts)
                     file = file,
                     ordinal = status .. " " .. file,
                     root = root .. '/',
-                    display = make_display
+                    display = function(_entry)
+                        return displayer {
+                            {_entry.status},
+                            {_entry.file, "TelescopeResultsIdentifier"}
+                        }
+                    end
                 }
             end
         },
